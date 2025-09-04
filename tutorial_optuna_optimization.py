@@ -54,7 +54,8 @@ class OptunaBrightnessExperiment:
         
         # Suggest network structure parameters
         n_neurons = trial.suggest_int('n_neurons', 20, 200)
-        stimulus_duration = trial.suggest_float('stimulus_duration', 25.0, 150.0)
+        stimulus_duration_steps = trial.suggest_int('stimulus_duration_steps', 250, 1500)  # 25.0 to 150.0 ms in 0.1ms steps
+        stimulus_duration = stimulus_duration_steps * self.dt
         
         # Generate stimulus based on suggested parameters
         stimulus_order = np.random.permutation(self.n_trials * self.n_values) % self.n_values
@@ -269,6 +270,14 @@ class OptunaBrightnessExperiment:
         
         # Use best parameters
         best_params = study.best_trial.params
+        n_neurons = best_params['n_neurons']
+        stimulus_duration = best_params['stimulus_duration_steps'] * self.dt
+        
+        # Reconstruct stimulus parameters
+        stimulus_order = np.random.permutation(self.n_trials * self.n_values) % self.n_values
+        x = np.array([(self.brightness[n]/100.) + 0.1 for n in stimulus_order])
+        times = np.arange(self.dt, self.n_trials * self.n_values * stimulus_duration, stimulus_duration)
+        sim_time = self.n_trials * self.n_values * stimulus_duration
         
         # Setup simulation with best parameters
         nest.ResetKernel()
@@ -280,13 +289,13 @@ class OptunaBrightnessExperiment:
         
         # Generate network with best parameters
         np.random.seed(42)  # Fixed seed for reproducibility
-        tuning = best_params['tuning_std'] * np.random.randn(self.n_neurons) + best_params['tuning_mean']
-        thresholds = best_params['threshold_std'] * np.random.randn(self.n_neurons) + best_params['threshold_mean']
-        v_init = np.random.uniform(low=-70., high=-50., size=self.n_neurons)
+        tuning = best_params['tuning_std'] * np.random.randn(n_neurons) + best_params['tuning_mean']
+        thresholds = best_params['threshold_std'] * np.random.randn(n_neurons) + best_params['threshold_mean']
+        v_init = np.random.uniform(low=-70., high=-50., size=n_neurons)
         
         # Create network
-        step_generator = nest.Create('step_current_generator', self.n_neurons)
-        neurons = nest.Create('iaf_psc_exp', self.n_neurons, {
+        step_generator = nest.Create('step_current_generator', n_neurons)
+        neurons = nest.Create('iaf_psc_exp', n_neurons, {
             'I_e': best_params['bias_current'],
             'V_reset': best_params['v_reset'],
             'tau_m': best_params['tau_m']
@@ -294,12 +303,12 @@ class OptunaBrightnessExperiment:
         spike_detector = nest.Create('spike_recorder')
         
         # Setup connections
-        amplitudes = np.zeros((self.n_neurons, len(self.x)))
-        for n in range(self.n_neurons):
-            amplitudes[n, :] = self.x * tuning[n]
+        amplitudes = np.zeros((n_neurons, len(x)))
+        for n in range(n_neurons):
+            amplitudes[n, :] = x * tuning[n]
             neurons[n].set({'V_m': v_init[n], 'V_th': thresholds[n]})
             step_generator[n].set({
-                'amplitude_times': self.times,
+                'amplitude_times': times,
                 'amplitude_values': amplitudes[n]
             })
             nest.Connect(step_generator[n], neurons[n])
@@ -307,7 +316,7 @@ class OptunaBrightnessExperiment:
         nest.Connect(neurons, spike_detector)
         
         # Run simulation
-        nest.Simulate(self.sim_time)
+        nest.Simulate(sim_time)
         
         # Analyze results
         spike_data = spike_detector.get('events')
@@ -315,14 +324,14 @@ class OptunaBrightnessExperiment:
         neuron_ids = spike_data['senders']
         
         # Filter spikes
-        filtered_states = filter_spikes(
-            spike_times, neuron_ids, self.n_neurons,
-            t_start=0., t_stop=self.sim_time, dt=self.dt, tau=20.0
+        filtered_states = filter_spikes_parallel(
+            spike_times, neuron_ids, n_neurons,
+            t_start=0., t_stop=sim_time, dt=self.dt, tau=20.0, n_processes=8
         )
         
         # Create target signal
         signal_steps = filtered_states.shape[1]
-        target_signal = np.repeat(self.x, signal_steps // len(self.x))
+        target_signal = np.repeat(x, signal_steps // len(x))
         target_signal = target_signal[:signal_steps]
         
         # Linear decoding
@@ -341,7 +350,12 @@ class OptunaBrightnessExperiment:
             'target_signal': target_signal,
             'reconstructed': reconstructed,
             'mse': mse,
-            'tuning': tuning
+            'tuning': tuning,
+            'n_neurons': n_neurons,
+            'stimulus_duration': stimulus_duration,
+            'x': x,
+            'times': times,
+            'sim_time': sim_time
         }
         
         return results
