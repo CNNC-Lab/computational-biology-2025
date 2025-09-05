@@ -2,7 +2,28 @@
 
 If you are working on Project 1, the first step is to install the NEST simulator. You can find the installation instructions [here](https://nest-simulator.readthedocs.io/en/stable/installation.html). NEST is particularly suited for Unix (Linux/Mac) systems, so if you use Windows it may be tricky to install and use it. In this case, the best option is either to install Windows Subsystem for Linux (WSL) and use Linux within Windows (see [here](https://learn.microsoft.com/en-us/windows/wsl/install)) or to run it in an independent and self-contained virtual machine (see instructions and download the virtual image [here](https://nest-simulator.readthedocs.io/en/stable/installation/livemedia.html#live-media)). Alternatively, you can use other simulation software, such as [Brian](https://brian2.readthedocs.io/en/stable/), [JAXley](https://jaxley.readthedocs.io/en/latest/), [Spytorch](https://github.com/fzenke/spytorch) or [Nengo](https://www.nengo.ai/).
 
-**NOTE:** While the project aims to work on a very simple input mapping problem, encoding a continuous, time-varying, 1-dimensional input signal, you are welcome to explore the audio dataset used in Project 2. 
+**NOTE:** While the project aims to work on a very simple input mapping problem, encoding a continuous, time-varying, 1-dimensional input signal, you are welcome to explore more complex tasks, like the audio dataset used in Project 2. Keep in mind that these experiments can become computationally heavy.
 
 ## Preliminaries: Setting up project requirements and libraries
 
+The most critical aspect is the main simulator. Follow the instructions in the main [README](README.md) file to install the dependencies using the conda venv. The simulator is the critical dependency and it is not included in the configurations file, so you will need to install it manually. When installing NEST, make sure you do it with the conda environment active, or follow the NEST installation instructions for conda.
+
+## Tutorial and Examples
+
+Once you have everything set up and running, go through the tutorial notebooks. Start with [tutorial_example_P1.ipynb](tutorial_example_P1.ipynb), which explains step-by-step how to create and setup a simple stimulus encoding experiment from scratch. As you will see in this example, the performance is not great because the model and stimulation parameters were chosen arbitrarily. The parameter selection is a critically important step in this type of experiments, so you can try [tutorial_optuna_optimization.ipynb](tutorial_optuna_optimization.ipynb), which shows an example of how to use [Optuna](https://optuna.org/) to optimize parameters.
+Examine these examples carefully. There are a set of tools provided that already implement relevant functionality which were not used in the demos, but you can investigate. Try to understand the
+use of the `SpikeList` and `StateMatrix` classes and check the source code (in `tools/analysis/`) as these 
+comprise a lot of potentially useful metrics and methods.
+
+After going through this simple tutorial and running the examples, you should have a good understanding of the tools provided and how to use them. You can now proceed to the project.
+
+### Project
+
+The tutorial shows a simple example: driving a single pool of spiking neurons with a time-dependent input and reconstructing this signal from the population responses. You can take this in many directions:
+1. **Explore more complex neuron models**: the example uses one of the simplest models of neuronal dynamics, the IAF (Integrate-and-Fire) model. You can explore more complex or biophysically realistic models, such as the Hodgkin-Huxley neuron, the Adaptive Exponential (AdEx) or the Izhikevic neuron, for example. Talk to your project tutor to discuss these choices and their suitability.
+
+2. **Explore more complex architectures**: the example uses a simple feedforward architecture. You can explore more complex architectures, such as recurrent networks, or even more biologically realistic architectures, such as the balanced random network (a recurrent spiking network with balanced excitation and inhibition, mimmicking cortical circuits). A second example notebook shows a simple example that implements a BRN architecture. Check notebook [tutorial_example_P1_2_NEST3.ipynb](tutorial_example_P1_2_NEST3.ipynb). In this example, we use the previous single layer pool to encode the signal and then driven a BRN as the main processing network. Then, we assess the representation performance in both encoder and main circuit. Talk to your project tutor to discuss these choices and their suitability.
+
+3. **Alternative measurements of representation**: the example uses a simple, continuous reconstruction error as a measure of representation performance. You can explore other alternative, such as the capacity of the representation, the trustworthiness of the embedding, or the ability to reconstruct the original data from the embedding. You can also place a classifier in the output layer and train it to determine the identity of the stimuli, instead of performing a continuous reconstruction task (this is much more likely to succeed). Talk to your project tutor to discuss these choices and their suitability.
+
+4. **Alternative tasks**: if you feel comfortable and confident with how things worked out in these examples, a very interesting extension would be to try different computational tasks. For example, you can use the MNIST digit dataset, encode it to spikes to drive a pool of neurons and assess the classification accuracy; you can use the SHD dataset from project 2 to do a spoken digit classification task, etc. **Note**: this path quickly becomes infeasible as some of these experiments can be very computationally costly.

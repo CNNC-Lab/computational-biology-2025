@@ -8,7 +8,7 @@ If you followed the steps above, you should have everything set up and running. 
 
 ### Tutorial & Examples
 
-Once you have everything set up and running, go through the tutorial notebook [tutorial_example.ipynb](tutorial_example.ipynb).
+Once you have everything set up and running, go through the tutorial notebook [tutorial_example.ipynb](tutorial_example_P2.ipynb).
 Examine it carefully. There are a set of tools provided that already implement relevant functionality. Try to understand the
 use of the `SpikeList` and `StateMatrix` classes in the examples and check the source code (in `tools/analysis/`) as these 
 comprise a lot of potentially useful metrics and methods.
